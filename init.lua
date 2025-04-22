@@ -8,7 +8,6 @@ Plug('neoclide/coc.nvim', { ['branch'] = 'release' })
 Plug ('nvim-telescope/telescope-fzf-native.nvim', { ['do'] = 'cmake -S. -Bbuild -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release' })
 -- On-demand loading: loaded when the specified command is executed
 Plug('preservim/nerdtree', { ['on'] = 'NERDTreeToggle' })
-
 Plug ('nvim-lualine/lualine.nvim')
 Plug ('folke/tokyonight.nvim')
 Plug ('nvim-lua/plenary.nvim')
@@ -26,8 +25,19 @@ Plug ('iamcco/markdown-preview.nvim', { ['do'] = 'cd app && npx --yes yarn insta
 Plug ('williamboman/mason-lspconfig.nvim')
 Plug ('nvim-telescope/telescope-media-files.nvim')
 Plug ('nvim-lua/popup.nvim')
+Plug ('nvim-java/lua-async-await')
+Plug ('nvim-java/nvim-java-refactor')
+Plug ('nvim-java/nvim-java-core')
+Plug ('nvim-java/nvim-java-test')
+Plug ('nvim-java/nvim-java-dap')
+Plug ('MunifTanjim/nui.nvim')
+Plug ('mfussenegger/nvim-dap')
+Plug ('nvim-java/nvim-java')
+Plug ('JavaHello/spring-boot.nvim')
+Plug ('MunifTanjim/prettier.nvim')
+Plug ('jose-elias-alvarez/null-ls.nvim')
 vim.call('plug#end')
-
+require('java').setup()
 require('lualine').setup()
 require('dropbar').setup()
 -- coc
@@ -37,7 +47,17 @@ local opts = { silent = true, noremap = true, expr = true, replace_keycodes = fa
 -- keyset('i', '<TAB>', 'coc#pum#visible() ? coc#pum#next(1) : v:lua.check_back_space() ? "<TAB>" : coc#refresh()', opts)
 
 -- end coc
-
+----- shift n tab
+vim.api.nvim_create_autocmd({"FileType"}, {
+  pattern = {"javascript", "typescript", "javascriptreact", "typescriptreact"},
+  callback = function()
+    vim.opt_local.tabstop = 2
+    vim.opt_local.softtabstop = 2
+    vim.opt_local.shiftwidth = 2
+    vim.opt_local.expandtab = true
+  end,
+})
+---
 vim.g.NERDTreeDirArrowCollapsable = "~"
 vim.g.NERDTreeDirArrowExpandable = "+"
 vim.g.tokyonight_transparent = true
@@ -54,7 +74,7 @@ keyset('n', '];', dropbar_api.select_next_context)
 keyset("n", "<leader>tt", ":CyberdreamToggleMode<CR>")
 
 require('cyberdream').setup({
-transparent = true
+transparent = false
 })
 require('telescope').load_extension("scope")
 require('telescope').load_extension('media_files')
@@ -64,6 +84,8 @@ require'lspconfig'.ast_grep.setup{}
 require'lspconfig'.astro.setup{}
 require'lspconfig'.astro.setup{}
 require'lspconfig'.pyright.setup{}
+require('lspconfig').jdtls.setup({})
+
 require'telescope'.setup {
   extensions = {
     media_files = {
@@ -75,6 +97,59 @@ require'telescope'.setup {
     }
   },
 }
+------- prettier
+local null_ls = require("null-ls")
+
+local group = vim.api.nvim_create_augroup("lsp_format_on_save", { clear = false })
+local event = "BufWritePre" -- or "BufWritePost"
+local async = event == "BufWritePost"
+
+null_ls.setup({
+  on_attach = function(client, bufnr)
+    if client.supports_method("textDocument/formatting") then
+      vim.keymap.set("n", "<Leader>f", function()
+        vim.lsp.buf.format({ bufnr = vim.api.nvim_get_current_buf() })
+      end, { buffer = bufnr, desc = "[lsp] format" })
+
+      -- format on save
+      vim.api.nvim_clear_autocmds({ buffer = bufnr, group = group })
+      vim.api.nvim_create_autocmd(event, {
+        buffer = bufnr,
+        group = group,
+        callback = function()
+          vim.lsp.buf.format({ bufnr = bufnr, async = async })
+        end,
+        desc = "[lsp] format on save",
+      })
+    end
+
+    if client.supports_method("textDocument/rangeFormatting") then
+      vim.keymap.set("x", "<Leader>f", function()
+        vim.lsp.buf.format({ bufnr = vim.api.nvim_get_current_buf() })
+      end, { buffer = bufnr, desc = "[lsp] format" })
+    end
+  end,
+})
+local prettier = require("prettier")
+
+prettier.setup({
+  bin = 'prettier', -- or `'prettierd'` (v0.23.3+)
+  filetypes = {
+    "css",
+    "graphql",
+    "html",
+    "javascript",
+    "javascriptreact",
+    "json",
+    "less",
+    "markdown",
+    "scss",
+    "typescript",
+    "typescriptreact",
+    "yaml",
+  },
+})
+----------------------------------
 -- require('scope').setup({})
 vim.cmd('silent! colorscheme cyberdream')
 vim.cmd('silent! :set number')
@@ -83,7 +158,7 @@ vim.keymap.set('n', '<leader>ff', builtin.find_files, { desc = 'Telescope find f
 vim.keymap.set('n', '<leader>fg', builtin.live_grep, { desc = 'Telescope live grep' })
 vim.keymap.set('n', '<leader>fb', builtin.buffers, { desc = 'Telescope buffers' })
 vim.keymap.set('n', '<leader>fh', builtin.help_tags, { desc = 'Telescope help tags' })
-
+-- vim.api.nvim_set_keymap('n', '<leader>rv', ':let @a = expand("<cword>")<CR>:%s/\\<\\@a\\>/<C-r>=input("Replace with: ")<CR>/g<CR>', { noremap = true })
 
 -- https://raw.githubusercontent.com/neoclide/coc.nvim/master/doc/coc-example-config.lua
 
